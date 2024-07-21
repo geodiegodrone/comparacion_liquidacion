@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparación de Liquidaciones entre Empresas</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.5.0-beta4/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #resultados {
+            margin-top: 20px;
+            background-color: #e9e9e9;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .aviso {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Comparación de Liquidaciones entre Empresas</h1>
+        <div class="aviso">
+            <strong>Aviso importante:</strong> Para todos los cálculos, use comas (,) para separar decimales y puntos (.) para separar miles. 
+            Ejemplo: 1.234,56
+        </div>
+        <div class="input-group">
+            <label for="empresa1">Nombre de la Empresa 1:</label>
+            <input type="text" id="empresa1" required>
+        </div>
+        <div class="input-group">
+            <label for="empresa2">Nombre de la Empresa 2:</label>
+            <input type="text" id="empresa2" required>
+        </div>
+        <div class="input-group">
+            <label for="trm">TRM (COP/USD):</label>
+            <input type="text" id="trm" required>
+        </div>
+        <div class="input-group">
+            <label for="tenor">Tenor de oro (gr/ton):</label>
+            <input type="text" id="tenor" required>
+        </div>
+        <div class="input-group">
+            <label for="toneladas">Toneladas secas:</label>
+            <input type="text" id="toneladas" required>
+        </div>
+        <div class="input-group">
+            <label for="valorGramo">Valor en COP de un gramo de oro:</label>
+            <input type="text" id="valorGramo" required>
+        </div>
+        <div class="input-group">
+            <label for="porcentajePago1">Porcentaje de pago del gramo de oro (<span class="empresa1"></span>):</label>
+            <input type="text" id="porcentajePago1" required>
+        </div>
+        <div class="input-group">
+            <label for="porcentajePago2">Porcentaje de pago del gramo de oro (<span class="empresa2"></span>):</label>
+            <input type="text" id="porcentajePago2" required>
+        </div>
+        <div class="input-group">
+            <label for="recuperacion1">Porcentaje de recuperación de oro (<span class="empresa1"></span>):</label>
+            <input type="text" id="recuperacion1" required>
+        </div>
+        <div class="input-group">
+            <label for="recuperacion2">Porcentaje de recuperación de oro (<span class="empresa2"></span>):</label>
+            <input type="text" id="recuperacion2" required>
+        </div>
+        <div class="input-group">
+            <label for="precioProc1">Precio en USD/ton de procesamiento (<span class="empresa1"></span>):</label>
+            <input type="text" id="precioProc1" required>
+        </div>
+        <div class="input-group">
+            <label for="precioProc2">Precio en USD/ton de procesamiento (<span class="empresa2"></span>):</label>
+            <input type="text" id="precioProc2" required>
+        </div>
+        <div class="input-group">
+            <label for="costoRef1">Costo de refinación en USD/gr (<span class="empresa1"></span>):</label>
+            <input type="text" id="costoRef1" required>
+        </div>
+        <div class="input-group">
+            <label for="costoRef2">Costo de refinación en USD/gr (<span class="empresa2"></span>):</label>
+            <input type="text" id="costoRef2" required>
+        </div>
+        <button onclick="calcular()">Calcular</button>
+        <div id="resultados"></div>
+        <button onclick="generarPDF()" style="margin-top: 20px;">Generar PDF</button>
+    </div>
+
+    <script>
+        function actualizarNombresEmpresas() {
+            const empresa1 = document.getElementById('empresa1').value || 'Empresa 1';
+            const empresa2 = document.getElementById('empresa2').value || 'Empresa 2';
+            document.querySelectorAll('.empresa1').forEach(el => el.textContent = empresa1);
+            document.querySelectorAll('.empresa2').forEach(el => el.textContent = empresa2);
+        }
+
+        document.getElementById('empresa1').addEventListener('input', actualizarNombresEmpresas);
+        document.getElementById('empresa2').addEventListener('input', actualizarNombresEmpresas);
+
+        function parseNumero(valor) {
+            return parseFloat(valor.replace(/\./g, '').replace(',', '.'));
+        }
+
+        function formatoNumero(numero) {
+            return numero.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        window.calcular = function() {
+            const empresa1 = document.getElementById('empresa1').value || 'Empresa 1';
+            const empresa2 = document.getElementById('empresa2').value || 'Empresa 2';
+            const trm = parseNumero(document.getElementById('trm').value);
+            const tenor = parseNumero(document.getElementById('tenor').value);
+            const toneladas = parseNumero(document.getElementById('toneladas').value);
+            const valorGramo = parseNumero(document.getElementById('valorGramo').value);
+            const porcentajePago1 = parseNumero(document.getElementById('porcentajePago1').value) / 100;
+            const porcentajePago2 = parseNumero(document.getElementById('porcentajePago2').value) / 100;
+            const recuperacion1 = parseNumero(document.getElementById('recuperacion1').value) / 100;
+            const recuperacion2 = parseNumero(document.getElementById('recuperacion2').value) / 100;
+            const precioProc1 = parseNumero(document.getElementById('precioProc1').value);
+            const precioProc2 = parseNumero(document.getElementById('precioProc2').value);
+            const costoRef1 = parseNumero(document.getElementById('costoRef1').value);
+            const costoRef2 = parseNumero(document.getElementById('costoRef2').value);
+
+            const gramosRecuperados1 = toneladas * tenor * recuperacion1;
+            const gramosRecuperados2 = toneladas * tenor * recuperacion2;
+            const precioOroRecuperado1 = gramosRecuperados1 * valorGramo;
+            const precioOroRecuperado2 = gramosRecuperados2 * valorGramo;
+            const beneficioPorcentual1 = porcentajePago1 * 100;
+            const beneficioPorcentual2 = porcentajePago2 * 100;
+            const costoProcesamiento1 = toneladas * precioProc1 * trm;
+            const costoProcesamiento2 = toneladas * precioProc2 * trm;
+            const costoRefinacion1 = gramosRecuperados1 * costoRef1 * trm;
+            const costoRefinacion2 = gramosRecuperados2 * costoRef2 * trm;
+            const costoTotalProcesamiento1 = costoProcesamiento1 + costoRefinacion1;
+            const costoTotalProcesamiento2 = costoProcesamiento2 + costoRefinacion2;
+            const precioPagado1 = (precioOroRecuperado1 * porcentajePago1) - costoTotalProcesamiento1;
+            const precioPagado2 = (precioOroRecuperado2 * porcentajePago2) - costoTotalProcesamiento2;
+
+            const mejorBeneficio = beneficioPorcentual1 > beneficioPorcentual2 ? empresa1 : empresa2;
+            const masBarata = costoTotalProcesamiento1 < costoTotalProcesamiento2 ? empresa1 : empresa2;
+            const mejorPrecioPagado = precioPagado1 > precioPagado2 ? empresa1 : empresa2;
+
+            const resultadosDiv = document.getElementById('resultados');
+            resultadosDiv.innerHTML = `
+                <h2>Resultados:</h2>
+                <p><strong>Gramos de oro recuperados:</strong><br>
+                   ${empresa1}: ${formatoNumero(gramosRecuperados1)} gr<br>
+                   ${empresa2}: ${formatoNumero(gramosRecuperados2)} gr</p>
+                <p><strong>Precio del oro recuperado:</strong><br>
+                   ${empresa1}: ${formatoNumero(precioOroRecuperado1)} COP<br>
+                   ${empresa2}: ${formatoNumero(precioOroRecuperado2)} COP</p>
+                <p><strong>Mejor beneficio porcentual:</strong> ${mejorBeneficio} (${formatoNumero(mejorBeneficio === empresa1 ? beneficioPorcentual1 : beneficioPorcentual2)}%)</p>
+                <p><strong>Costo total de procesamiento y refinación:</strong><br>
+                   ${empresa1}: ${formatoNumero(costoTotalProcesamiento1)} COP<br>
+                   ${empresa2}: ${formatoNumero(costoTotalProcesamiento2)} COP</p>
+                <p><strong>Empresa más barata para procesar y refinar:</strong> ${masBarata}</p>
+                <p><strong>Precio final pagado:</strong><br>
+                   ${empresa1}: ${formatoNumero(precioPagado1)} COP<br>
+                   ${empresa2}: ${formatoNumero(precioPagado2)} COP</p>
+                <p><strong>Mejor precio final pagado:</strong> ${mejorPrecioPagado}</p>
+            `;
+        };
+
+        window.generarPDF = function() {
+            const { jsPDF } = window.jspdf;
+            
+            html2canvas(document.body).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                pdf.save('comparacion_liquidaciones.pdf');
+            });
+        };
+
+        // Inicializar los nombres de las empresas
+        actualizarNombresEmpresas();
+    </script>
+</body>
+</html>
